@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { AccessDenied, EmptyState, ErrorState } from "@/components/shared/states";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { DateRangeFilter, FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
+import { MobileList, MobileListItem } from "@/components/shared/mobile-list";
+import { CollapsibleFilters, DateRangeFilter, FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -92,6 +93,7 @@ async function Certificates({ searchParams }: { searchParams: SearchParams }) {
         <section className="rounded-lg border bg-card">
           <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:flex-wrap lg:items-center">
             <SearchInput placeholder="Search reference or name" />
+            <CollapsibleFilters params={["type", "status", "range", "from"]}>
             <FilterSelect param="type" placeholder="Type" allLabel="All types" options={(types ?? []).map((t) => ({ value: t.id, label: t.name }))} />
             <FilterSelect
               param="status"
@@ -99,7 +101,10 @@ async function Certificates({ searchParams }: { searchParams: SearchParams }) {
               allLabel="All statuses"
               options={Object.entries(CERT_STATUS).map(([value, [, label]]) => ({ value, label }))}
             />
+            <div className="sm:col-span-2">
             <DateRangeFilter from={range.from} to={range.to} presets={Object.entries(RANGE_PRESETS).map(([value, label]) => ({ value, label }))} />
+            </div>
+            </CollapsibleFilters>
           </div>
           {result.error ? (
             <div className="p-4">
@@ -111,6 +116,19 @@ async function Certificates({ searchParams }: { searchParams: SearchParams }) {
             </div>
           ) : (
             <>
+              <MobileList>
+                {(result.data ?? []).map((c) => (
+                  <MobileListItem
+                    key={c.id}
+                    href={`/certificates/${c.id}`}
+                    title={c.recipient_name}
+                    subtitle={`${c.reference_no} · ${formatDate(c.issued_on)}`}
+                    detail={c.certificate_types?.name}
+                    badge={<StatusBadge tone={CERT_STATUS[c.status][0]}>{CERT_STATUS[c.status][1]}</StatusBadge>}
+                  />
+                ))}
+              </MobileList>
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -149,6 +167,7 @@ async function Certificates({ searchParams }: { searchParams: SearchParams }) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
               <Pager page={page} pageSize={PAGE_SIZE} total={result.count ?? 0} />
             </>
           )}

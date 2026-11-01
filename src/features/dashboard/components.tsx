@@ -10,18 +10,18 @@ export function WelcomeBanner({ title, subtitle, controls }: { title: string; su
   return (
     <section className="relative overflow-hidden rounded-2xl border bg-linear-to-br from-[#e6effb] via-[#f3f7fd] to-white shadow-sm dark:from-[#14233d] dark:via-[#111c31] dark:to-[#0d1524]">
       <BannerArt />
-      <div className="relative flex flex-col gap-6 p-6 sm:p-8 md:pr-56 2xl:flex-row 2xl:items-start 2xl:justify-between">
+      <div className="relative flex flex-col gap-4 p-5 sm:gap-6 sm:p-8 md:pr-56 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div className="max-w-2xl">
-          <h1 className="text-3xl font-bold tracking-tight text-secondary-foreground sm:text-4xl">{title}</h1>
-          <p className="mt-2 text-lg text-foreground/80">{subtitle}</p>
-          <div className="mt-3 h-1 w-12 rounded-full bg-gold" aria-hidden="true" />
-          <blockquote className="mt-4 max-w-xl font-serif text-lg leading-relaxed text-secondary-foreground/90 italic">
+          <h1 className="text-2xl font-bold tracking-tight text-secondary-foreground sm:text-4xl">{title}</h1>
+          <p className="mt-1 text-base text-foreground/80 sm:mt-2 sm:text-lg">{subtitle}</p>
+          <div className="mt-3 hidden h-1 w-12 rounded-full bg-gold sm:block" aria-hidden="true" />
+          <blockquote className="mt-3 max-w-xl border-l-4 border-gold pl-3 font-serif text-base leading-relaxed text-secondary-foreground/90 italic sm:mt-4 sm:border-0 sm:pl-0 sm:text-lg">
             &ldquo;Let your light so shine before men, that they may see your good works, and glorify your Father which is in
             heaven.&rdquo;
             <footer className="mt-1 font-sans text-base font-semibold not-italic text-primary">Matthew 5:16</footer>
           </blockquote>
         </div>
-        <div className="relative flex flex-col items-start gap-3 2xl:items-end">{controls}</div>
+        <div className="relative flex flex-col items-stretch gap-2 sm:items-start sm:gap-3 2xl:items-end">{controls}</div>
       </div>
     </section>
   );

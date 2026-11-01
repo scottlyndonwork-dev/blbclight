@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { AccessDenied, EmptyState, ErrorState } from "@/components/shared/states";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { DateRangeFilter, FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
+import { MobileList, MobileListItem } from "@/components/shared/mobile-list";
+import { CollapsibleFilters, DateRangeFilter, FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,6 +85,7 @@ async function Transactions({ searchParams }: { searchParams: SearchParams }) {
       <section className="rounded-lg border bg-card">
         <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:flex-wrap lg:items-center">
           <SearchInput placeholder="Search description, number, payer" />
+          <CollapsibleFilters params={["kind", "status", "fund", "category", "range", "from"]}>
           <FilterSelect param="kind" placeholder="Type" allLabel="Income and expenses" options={[{ value: "income", label: "Income" }, { value: "expense", label: "Expenses" }]} />
           <FilterSelect param="status" placeholder="Status" allLabel="All statuses" options={Object.entries(STATUS).map(([value, [, label]]) => ({ value, label }))} />
           <FilterSelect param="fund" placeholder="Fund" allLabel="All funds" options={lookups.funds.map((f) => ({ value: f.id, label: f.name }))} />
@@ -95,7 +97,10 @@ async function Transactions({ searchParams }: { searchParams: SearchParams }) {
               .filter((c) => !filters.kind || c.kind === filters.kind)
               .map((c) => ({ value: c.id, label: `${c.name}${filters.kind ? "" : c.kind === "income" ? " (income)" : " (expense)"}` }))}
           />
+          <div className="sm:col-span-2">
           <DateRangeFilter from={range.from} to={range.to} presets={Object.entries(RANGE_PRESETS).map(([value, label]) => ({ value, label }))} />
+          </div>
+          </CollapsibleFilters>
         </div>
         {error ? (
           <div className="p-4">
@@ -107,6 +112,23 @@ async function Transactions({ searchParams }: { searchParams: SearchParams }) {
           </div>
         ) : (
           <>
+            <MobileList>
+              {rows.map((t) => {
+                const outflow = (t.kind === "expense") !== Boolean(t.reverses_transaction_id);
+                return (
+                  <MobileListItem
+                    key={t.id}
+                    href={`/finance/transactions/${t.id}`}
+                    title={t.description}
+                    subtitle={`${formatDate(t.txn_date)} · ${t.txn_no ?? "Draft"}`}
+                    detail={[t.financial_categories?.name, t.funds?.name].filter(Boolean).join(" · ")}
+                    value={<span className={outflow ? "text-destructive" : "text-success"}>{`${outflow ? "−" : "+"}${formatPeso(t.amount)}`}</span>}
+                    badge={<StatusBadge tone={STATUS[t.status][0]}>{t.reverses_transaction_id ? "Reversal" : STATUS[t.status][1]}</StatusBadge>}
+                  />
+                );
+              })}
+            </MobileList>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -150,6 +172,7 @@ async function Transactions({ searchParams }: { searchParams: SearchParams }) {
                 })}
               </TableBody>
             </Table>
+            </div>
             <Pager page={filters.page} pageSize={TRANSACTIONS_PAGE_SIZE} total={total} />
           </>
         )}

@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -155,18 +155,40 @@ export function DateRangeFilter({
   );
 }
 
+/**
+ * Wraps secondary filters. On phones and tablets they fold behind a
+ * "Filters" button (showing how many are in use); on large screens they
+ * are always visible.
+ */
+export function CollapsibleFilters({ params, children }: { params: string[]; children: ReactNode }) {
+  const { searchParams } = useUrlParams();
+  const [open, setOpen] = useState(false);
+  const active = params.filter((p) => searchParams.get(p)).length;
+  return (
+    <>
+      <Button type="button" variant="outline" className="w-full justify-between lg:hidden" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="flex items-center gap-2">
+          <SlidersHorizontal /> Filters
+        </span>
+        {active > 0 ? <span className="rounded-full bg-primary px-2 text-xs text-primary-foreground">{active} on</span> : <span className="text-muted-foreground">{open ? "Hide" : "Show"}</span>}
+      </Button>
+      <div className={cn(open ? "grid" : "hidden", "gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center")}>{children}</div>
+    </>
+  );
+}
+
 /** Large one-tap period buttons (e.g. This week / This month / This year). */
 export function PeriodButtons({ options, active }: { options: FilterOption[]; active: string }) {
   const { update, pending } = useUrlParams();
   return (
-    <div role="group" aria-label="Period" className={cn("flex flex-wrap gap-2", pending && "opacity-70")}>
+    <div role="group" aria-label="Period" className={cn("grid grid-cols-3 gap-2 sm:flex sm:flex-wrap", pending && "opacity-70")}>
       {options.map((o) => (
         <Button
           key={o.value}
           type="button"
           variant={active === o.value ? "default" : "outline"}
           aria-pressed={active === o.value}
-          className="rounded-full px-5 shadow-sm"
+          className="rounded-full px-2 shadow-sm sm:px-5"
           onClick={() => update({ range: o.value, from: null, to: null })}
         >
           {o.label}

@@ -6,7 +6,8 @@ import { SessionDialog } from "@/features/attendance/components/session-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { AccessDenied, EmptyState, ErrorState } from "@/components/shared/states";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { DateRangeFilter, FilterSelect, Pager } from "@/components/shared/url-controls";
+import { MobileList, MobileListItem } from "@/components/shared/mobile-list";
+import { CollapsibleFilters, DateRangeFilter, FilterSelect, Pager } from "@/components/shared/url-controls";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -61,8 +62,12 @@ async function AttendanceSessions({ searchParams }: { searchParams: SearchParams
 
       <section className="rounded-lg border bg-card">
         <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:items-center">
-          <FilterSelect param="type" placeholder="Service" allLabel="All services" options={serviceTypes.map((t) => ({ value: t.id, label: t.name }))} className="sm:w-56" />
-          <DateRangeFilter from={range.from} to={range.to} presets={Object.entries(RANGE_PRESETS).map(([value, label]) => ({ value, label }))} />
+          <CollapsibleFilters params={["type", "range", "from"]}>
+            <FilterSelect param="type" placeholder="Service" allLabel="All services" options={serviceTypes.map((t) => ({ value: t.id, label: t.name }))} className="sm:w-56" />
+            <div className="sm:col-span-2">
+              <DateRangeFilter from={range.from} to={range.to} presets={Object.entries(RANGE_PRESETS).map(([value, label]) => ({ value, label }))} />
+            </div>
+          </CollapsibleFilters>
         </div>
         {error ? (
           <div className="p-4">
@@ -80,6 +85,19 @@ async function AttendanceSessions({ searchParams }: { searchParams: SearchParams
           </div>
         ) : (
           <>
+            <MobileList>
+              {rows.map((s) => (
+                <MobileListItem
+                  key={s.id}
+                  href={`/attendance/${s.id}`}
+                  title={s.title || s.service_type_name}
+                  subtitle={`${formatDate(s.session_date, "EEE, MMM d")} · ${formatTime(s.start_time)}`}
+                  value={`${(s.present_count ?? 0) + (s.late_count ?? 0)} attended`}
+                  badge={<StatusBadge tone={s.status === "open" ? "green" : "gray"}>{s.status === "open" ? "Open" : "Closed"}</StatusBadge>}
+                />
+              ))}
+            </MobileList>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -119,6 +137,7 @@ async function AttendanceSessions({ searchParams }: { searchParams: SearchParams
                 ))}
               </TableBody>
             </Table>
+            </div>
             <Pager page={page} pageSize={SESSIONS_PAGE_SIZE} total={total} />
           </>
         )}

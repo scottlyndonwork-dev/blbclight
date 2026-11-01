@@ -150,6 +150,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -165,10 +166,12 @@
     font-size: 125%;
   }
   /* Main navigation: navy fading toward the logo's deeper blue. */
-  [data-slot="sidebar-inner"] {
+  [data-slot="sidebar-inner"],
+  [data-slot="sidebar"][data-mobile="true"] {
     background-image: linear-gradient(180deg, #16273d 0%, #1a3356 70%, #1d3b66 100%);
   }
-  .dark [data-slot="sidebar-inner"] {
+  .dark [data-slot="sidebar-inner"],
+  .dark [data-slot="sidebar"][data-mobile="true"] {
     background-image: linear-gradient(180deg, #0a1120 0%, #0f1c33 100%);
   }
   /* A clearly visible keyboard focus outline. */

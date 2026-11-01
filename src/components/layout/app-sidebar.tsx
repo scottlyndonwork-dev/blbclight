@@ -32,7 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const ICONS: Record<NavIcon, LucideIcon> = {
+export const ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   members: Users,
   attendance: CalendarCheck,

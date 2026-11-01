@@ -14,9 +14,13 @@ export const metadata: Metadata = {
   title: { default: "LIGHT", template: "%s · LIGHT" },
   description: "LIGHT — Leadership Information, Governance, and Holistic Tracking. Church Management Information System.",
   robots: { index: false, follow: false },
+  applicationName: "LIGHT",
+  appleWebApp: { capable: true, title: "LIGHT", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
+  // Lets the app draw under phone notches; padding uses env(safe-area-inset-*).
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#16273d" },
     { media: "(prefers-color-scheme: dark)", color: "#0a1120" },

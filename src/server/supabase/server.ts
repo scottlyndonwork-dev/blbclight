@@ -12,10 +12,11 @@ export type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * made with it runs under the user's identity, so Row Level Security applies.
  */
 export async function createClient() {
-  const env = publicEnv();
   // Defer to request time: auth-js reads Date.now() to check session expiry,
   // which Cache Components rejects after only cookies() has been awaited.
+  // This also keeps builds from needing the Supabase environment variables.
   await connection();
+  const env = publicEnv();
   const cookieStore = await cookies();
 
   return createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {

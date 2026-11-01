@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { AccessDenied, EmptyState, ErrorState } from "@/components/shared/states";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
+import { CollapsibleFilters, FilterSelect, Pager, SearchInput } from "@/components/shared/url-controls";
+import { MobileList, MobileListItem } from "@/components/shared/mobile-list";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,6 +91,7 @@ async function MembersDirectory({ searchParams }: { searchParams: SearchParams }
       <div className="rounded-lg border bg-card">
         <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:flex-wrap lg:items-center">
           <SearchInput placeholder="Search name or member ID" />
+          <CollapsibleFilters params={["status", "category", "ministry", "baptized", "sort", "view"]}>
           <FilterSelect
             param="status"
             placeholder="Status"
@@ -128,6 +130,7 @@ async function MembersDirectory({ searchParams }: { searchParams: SearchParams }
           {can("members.archive") && (
             <FilterSelect param="view" placeholder="Records" allLabel="Current records" options={[{ value: "archived", label: "Archived records" }]} />
           )}
+          </CollapsibleFilters>
         </div>
 
         {error ? (
@@ -156,6 +159,18 @@ async function MembersDirectory({ searchParams }: { searchParams: SearchParams }
           </div>
         ) : (
           <>
+            <MobileList>
+              {rows.map((m) => (
+                <MobileListItem
+                  key={m.id}
+                  href={`/members/${m.id}`}
+                  title={`${m.last_name}, ${m.first_name}`}
+                  subtitle={[m.member_no, m.city].filter(Boolean).join(" · ")}
+                  badge={<StatusBadge tone={m.status_color}>{m.status_name}</StatusBadge>}
+                />
+              ))}
+            </MobileList>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -189,6 +204,7 @@ async function MembersDirectory({ searchParams }: { searchParams: SearchParams }
                 ))}
               </TableBody>
             </Table>
+            </div>
             <Pager page={filters.page} pageSize={MEMBERS_PAGE_SIZE} total={total} />
           </>
         )}

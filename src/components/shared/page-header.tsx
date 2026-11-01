@@ -25,7 +25,8 @@ export function PageHeader({
   breadcrumbs?: Crumb[];
 }) {
   // The nearest linked ancestor gets a large, explicit back button.
-  const parent = breadcrumbs?.slice(0, -1).findLast((c) => c.href);
+  // (Not for top-level pages: the Home tab and sidebar already lead there.)
+  const parent = breadcrumbs?.slice(0, -1).findLast((c) => c.href && c.href !== "/dashboard");
   return (
     <div className="mb-6 space-y-3">
       {parent?.href && (
@@ -57,10 +58,10 @@ export function PageHeader({
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight text-secondary-foreground">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-secondary-foreground sm:text-3xl">{title}</h1>
           {description && <p className="mt-1 text-base text-muted-foreground">{description}</p>}
         </div>
-        {actions && <div className="no-print flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="no-print flex flex-wrap items-center gap-2 max-sm:*:flex-1">{actions}</div>}
       </div>
     </div>
   );
