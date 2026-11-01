@@ -20,13 +20,17 @@ export type CurrentUser = {
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
-  const { data: auth, error } = await supabase.auth.getUser();
-  if (error || !auth.user) return null;
+  // getClaims verifies the JWT signature locally against the project's cached
+  // signing keys, saving a round trip to Supabase Auth on every page. Inactive
+  // accounts are still rejected below by the profile check.
+  const { data: auth, error } = await supabase.auth.getClaims();
+  const userId = auth?.claims?.sub;
+  if (error || !userId) return null;
 
   const [profileResult, permissionsResult, rolesResult] = await Promise.all([
-    supabase.from("profiles").select("full_name, email, is_active").eq("id", auth.user.id).maybeSingle(),
+    supabase.from("profiles").select("full_name, email, is_active").eq("id", userId).maybeSingle(),
     supabase.rpc("my_permissions"),
-    supabase.from("user_roles").select("roles(name)").eq("user_id", auth.user.id),
+    supabase.from("user_roles").select("roles(name)").eq("user_id", userId),
   ]);
 
   const profile = profileResult.data;
@@ -37,7 +41,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   );
 
   return {
-    id: auth.user.id,
+    id: userId,
     email: profile.email,
     fullName: profile.full_name || profile.email,
     permissions,
