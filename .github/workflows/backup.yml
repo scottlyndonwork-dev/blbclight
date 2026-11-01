@@ -1,0 +1,56 @@
+name: Nightly database backup
+
+# Independent, encrypted logical backup in addition to Supabase's own backups.
+# Required repository secrets:
+#   SUPABASE_DB_URL         Session pooler connection string (Project Settings -> Database)
+#   BACKUP_PASSPHRASE       Long random passphrase used to encrypt the dump (store it offline too)
+# Restore instructions: docs/backup-recovery.md
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 02:00 Asia/Manila
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth --schema=storage \
+            --file="grace-$STAMP.dump"
+          pg_restore --list "grace-$STAMP.dump" > /dev/null   # verifies the archive is readable
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "grace-$STAMP.dump.gpg" "grace-$STAMP.dump"
+          rm "grace-$STAMP.dump"
+          sha256sum "grace-$STAMP.dump.gpg" > "grace-$STAMP.dump.gpg.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grace-backup-${{ env.STAMP }}
+          path: grace-*.dump.gpg*
+          retention-days: 30
+          if-no-files-found: error
