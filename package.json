@@ -17,7 +17,8 @@
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts",
     "bootstrap:admin": "node --env-file=.env.local --experimental-strip-types scripts/bootstrap-admin.mts",
     "set-password": "node --env-file=.env.local --experimental-strip-types scripts/set-password.mts",
-    "db:types:local": "node --experimental-strip-types scripts/gen-db-types.mts"
+    "db:types:local": "node --experimental-strip-types scripts/gen-db-types.mts",
+    "check-login": "node --env-file=.env.local --experimental-strip-types scripts/check-login.mts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

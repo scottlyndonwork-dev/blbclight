@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Monitor, Moon, Sun, Type } from "lucide-react";
+import { KeyRound, LogOut, Monitor, Moon, Sun, Type } from "lucide-react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useState, useTransition } from "react";
 import { signOutAction } from "@/features/auth/actions";
@@ -81,6 +82,11 @@ export function UserMenu({ fullName, email, roles }: { fullName: string; email: 
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/reset-password">
+            <KeyRound /> Change password
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={pending}
           onSelect={(e) => {

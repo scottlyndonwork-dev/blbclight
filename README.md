@@ -20,15 +20,10 @@ LIGHT manages church membership, attendance, membership status, certificate issu
 ## 2. Configure Supabase
 
 1. **Create the project** at supabase.com. Choose the Southeast Asia (Singapore) region.
-2. **Disable public sign-ups.** Go to *Authentication → Providers → Email* and turn off "Allow new users to sign up". LIGHT accounts are invitation-only.
-3. **URL configuration.** In *Authentication → URL Configuration*:
-   - Site URL: your production URL, e.g. `https://grace.yourchurch.org`
-   - Redirect URLs: `https://grace.yourchurch.org/auth/confirm`, plus `http://localhost:3000/auth/confirm` for development
-4. **Email templates.** In *Authentication → Email Templates*, make the links point to the confirm route:
-   - Invite user: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password`
-   - Reset password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`
-5. **SMTP.** For production, configure a custom SMTP server (*Project Settings → Authentication → SMTP*). Supabase's built-in mailer is rate-limited.
-6. **Apply the database migrations** from this repository:
+2. **Disable public sign-ups.** Go to *Authentication → Providers → Email* and turn off "Allow new users to sign up". Only administrators create LIGHT accounts.
+3. **URL configuration.** In *Authentication → URL Configuration*, set the Site URL to your production URL, e.g. `https://blbclight.vercel.app`.
+4. **No email setup is needed.** LIGHT sends no emails. To add a user, create them in *Authentication → Users → Add user → Create new user* with a temporary password and **Auto Confirm User** ticked, then open **Users** in LIGHT and click **Edit** to set their name and roles. Forgotten passwords are replaced from **Users → Set password**; people change their own password from the account menu.
+5. **Apply the database migrations** from this repository:
    ```bash
    pnpm install
    pnpm dlx supabase login
@@ -45,8 +40,8 @@ Copy `.env.example` to `.env.local` and fill in the values from *Project Setting
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser and server | No |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser and server (RLS protects data) | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only: user invitations and account suspension | **Yes**, never expose |
-| `NEXT_PUBLIC_SITE_URL` | Invitation links, certificate QR codes | No |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only: setting temporary passwords and recording failed sign-ins | **Yes**, never expose |
+| `NEXT_PUBLIC_SITE_URL` | Certificate QR codes | No |
 
 Never prefix the service role key with `NEXT_PUBLIC_`, and never commit `.env.local`.
 

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth", "/verify", "/setup"];
+const PUBLIC_PATHS = ["/login", "/auth", "/verify", "/setup"];
 
 /**
  * Refreshes the Supabase session cookie and redirects unauthenticated

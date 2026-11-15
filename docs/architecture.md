@@ -12,7 +12,7 @@ Browser ──► Next.js on Vercel
              └─ Proxy (src/proxy.ts) refreshes the session cookie, redirects signed-out users
           ──► Supabase
              ├─ PostgreSQL           tables, constraints, RLS, SECURITY DEFINER business functions, audit triggers
-             ├─ Auth                 email/password, invitation-only
+             ├─ Auth                 email/password, accounts created by administrators
              └─ Storage              private buckets (member photos, finance attachments, church assets)
 ```
 

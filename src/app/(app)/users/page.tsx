@@ -2,7 +2,7 @@ import { KeyRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { InviteUserDialog, UserRowActions } from "@/features/users/components";
+import { AddUserGuide, UserRowActions } from "@/features/users/components";
 import { PageHeader } from "@/components/shared/page-header";
 import { AccessDenied, ErrorState } from "@/components/shared/states";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -36,7 +36,7 @@ async function Users() {
     <>
       <PageHeader
         title="User Management"
-        description="Staff accounts and their roles. Accounts are created by invitation only."
+        description="Staff accounts and their roles. New accounts are created in Supabase, then given a name and roles here."
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "User Management" }]}
         actions={
           <>
@@ -45,7 +45,7 @@ async function Users() {
                 <KeyRound /> Roles &amp; permissions
               </Link>
             </Button>
-            <InviteUserDialog roles={roles.data ?? []} />
+            <AddUserGuide />
           </>
         }
       />
@@ -71,7 +71,11 @@ async function Users() {
                     {p.id === user.id && <span className="ml-1 text-xs text-muted-foreground">(you)</span>}
                     <span className="block text-xs text-muted-foreground">{p.email}</span>
                   </TableCell>
-                  <TableCell className="max-w-xs whitespace-normal text-sm">{p.user_roles.map((r) => r.roles?.name).join(", ") || "—"}</TableCell>
+                  <TableCell className="max-w-xs whitespace-normal text-sm">{p.user_roles.length > 0 ? (
+                      p.user_roles.map((r) => r.roles?.name).join(", ")
+                    ) : (
+                      <StatusBadge tone="amber">No roles yet</StatusBadge>
+                    )}</TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">{p.last_sign_in_at ? formatDateTime(p.last_sign_in_at) : "Never"}</TableCell>
                   <TableCell>
                     <StatusBadge tone={p.is_active ? "green" : "gray"}>{p.is_active ? "Active" : "Deactivated"}</StatusBadge>

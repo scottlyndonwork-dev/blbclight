@@ -4,54 +4,15 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { friendlyDbError } from "@/lib/db-errors";
-import { publicEnv } from "@/lib/env";
 import { authorizeAction } from "@/server/auth/session";
 import { createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
 const idSchema = z.uuid();
 
-const inviteSchema = z.object({
-  email: z.email("Enter a valid email address.").max(254),
-  full_name: z.string().trim().min(2, "Enter the person's full name.").max(200),
-  role_ids: z.array(z.uuid()).min(1, "Assign at least one role."),
-});
-
-export type InviteInput = z.input<typeof inviteSchema>;
-
 function revalidateUsers() {
   revalidatePath("/users");
   revalidatePath("/users/roles");
-}
-
-export async function inviteUserAction(input: InviteInput): Promise<ActionResult<null>> {
-  const { denied } = await authorizeAction(["users.manage"]);
-  if (denied) return denied;
-  const parsed = inviteSchema.safeParse(input);
-  if (!parsed.success) return fail("Please correct the highlighted fields.", z.flattenError(parsed.error).fieldErrors);
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return fail("Inviting users requires the server to be configured with the service role key.");
-
-  const supabase = await createClient();
-  const { data: existing } = await supabase.from("profiles").select("id").eq("email", parsed.data.email.toLowerCase()).maybeSingle();
-  if (existing) return fail("A user with this email already exists.");
-
-  // Service role is used only for the auth invitation itself.
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
-    data: { full_name: parsed.data.full_name },
-    redirectTo: `${publicEnv().NEXT_PUBLIC_SITE_URL}/auth/confirm?next=/reset-password`,
-  });
-  if (error || !data.user) return fail(error?.message.includes("already") ? "A user with this email already exists." : "The invitation could not be sent.");
-
-  // Role assignment runs as the administrator so RLS and the audit trail apply.
-  const { error: roleError } = await supabase
-    .from("user_roles")
-    .insert(parsed.data.role_ids.map((role_id) => ({ user_id: data.user.id, role_id })));
-  if (roleError) return fail(`Invitation sent, but roles could not be assigned: ${friendlyDbError(roleError)}`);
-  await supabase.from("profiles").update({ full_name: parsed.data.full_name }).eq("id", data.user.id);
-
-  revalidateUsers();
-  return ok(null, `Invitation sent to ${parsed.data.email}.`);
 }
 
 export async function setUserRolesAction(userId: string, roleIds: string[]): Promise<ActionResult<null>> {
@@ -111,16 +72,32 @@ export async function updateUserNameAction(userId: string, fullName: string): Pr
   return ok(null, "Name updated.");
 }
 
-export async function resendInviteAction(email: string): Promise<ActionResult<null>> {
-  const { denied } = await authorizeAction(["users.manage"]);
+const temporaryPasswordSchema = z
+  .string()
+  .min(10, "Use at least 10 characters.")
+  .max(128, "Use at most 128 characters.")
+  .regex(/[A-Za-z]/, "Include at least one letter.")
+  .regex(/\d/, "Include at least one number.");
+
+/**
+ * Gives another user a temporary password, for new accounts and forgotten
+ * passwords (LIGHT sends no emails). Uses the service role for the Auth
+ * update only; the event is written to the audit log as the administrator.
+ */
+export async function setUserPasswordAction(userId: string, password: string): Promise<ActionResult<null>> {
+  const { user, denied } = await authorizeAction(["users.manage"]);
   if (denied) return denied;
-  if (!z.email().safeParse(email).success) return fail("Invalid email.");
+  if (!idSchema.safeParse(userId).success) return fail("Invalid user.");
+  if (userId === user.id) return fail("Change your own password from the account menu.");
+  const parsed = temporaryPasswordSchema.safeParse(password);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Choose a stronger password.");
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return fail("Setting passwords requires the server to be configured with the service role key.");
+
+  const { error } = await createAdminClient().auth.admin.updateUserById(userId, { password: parsed.data, email_confirm: true });
+  if (error) return fail("The password could not be set. Try again.");
   const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${publicEnv().NEXT_PUBLIC_SITE_URL}/auth/confirm?next=/reset-password`,
-  });
-  if (error) return fail("The email could not be sent. Try again later.");
-  return ok(null, `A password setup link was sent to ${email}.`);
+  await supabase.rpc("log_event", { p_action: "auth.password_set_by_admin", p_entity_type: "user", p_entity_id: userId, p_summary: "Temporary password set by an administrator" });
+  return ok(null, "Temporary password set. Give it to the user in person.");
 }
 
 export async function setRolePermissionAction(roleId: string, permissionId: string, granted: boolean): Promise<ActionResult<null>> {

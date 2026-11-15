@@ -1,6 +1,6 @@
 "use client";
 
-import { MailPlus, Plus, Settings2, ShieldOff, ShieldCheck, Send } from "lucide-react";
+import { KeyRound, Plus, Settings2, ShieldOff, ShieldCheck, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/action-result";
 import {
   createRoleAction,
-  inviteUserAction,
-  resendInviteAction,
   setRolePermissionAction,
   setUserActiveAction,
+  setUserPasswordAction,
   setUserRolesAction,
+  updateUserNameAction,
 } from "./actions";
 
 type Role = { id: string; key: string; name: string; description: string };
@@ -55,70 +55,6 @@ function useRun() {
   return { run, pending };
 }
 
-export function InviteUserDialog({ roles }: { roles: Role[] }) {
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const { run, pending } = useRun();
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
-      <DialogTrigger asChild>
-        <Button>
-          <MailPlus /> Invite user
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Invite a user</DialogTitle>
-          <DialogDescription>They will receive an email to set their password. Give only the access their duties require.</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4">
-          <FormField id="invite_name" label="Full name" required error={errors.full_name}>
-            <Input id="invite_name" value={name} onChange={(e) => setName(e.target.value)} />
-          </FormField>
-          <FormField id="invite_email" label="Email address" required error={errors.email}>
-            <Input id="invite_email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </FormField>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Roles</span>
-            <RoleChecklist roles={roles} value={roleIds} onChange={setRoleIds} />
-            {errors.role_ids && <p className="text-xs text-destructive">{errors.role_ids}</p>}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-            Cancel
-          </Button>
-          <Button
-            disabled={pending}
-            onClick={() =>
-              run(
-                async () => {
-                  const r = await inviteUserAction({ email, full_name: name, role_ids: roleIds });
-                  if (!r.ok) setErrors(Object.fromEntries(Object.entries(r.fieldErrors ?? {}).map(([k, v]) => [k, v?.[0]])));
-                  return r;
-                },
-                () => {
-                  setOpen(false);
-                  setEmail("");
-                  setName("");
-                  setRoleIds([]);
-                  setErrors({});
-                },
-              )
-            }
-          >
-            {pending ? "Sending…" : "Send invitation"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export function UserRowActions({
   userId,
   email,
@@ -137,42 +73,153 @@ export function UserRowActions({
   currentRoleIds: string[];
 }) {
   const [open, setOpen] = useState(false);
+  const [fullName, setFullName] = useState(name);
   const [roleIds, setRoleIds] = useState(currentRoleIds);
   const { run, pending } = useRun();
 
+  async function save(): Promise<ActionResult<null>> {
+    if (fullName.trim() !== name) {
+      const r = await updateUserNameAction(userId, fullName);
+      if (!r.ok) return r;
+    }
+    const rolesChanged = roleIds.length !== currentRoleIds.length || roleIds.some((id) => !currentRoleIds.includes(id));
+    if (rolesChanged) return setUserRolesAction(userId, roleIds);
+    return { ok: true, data: null, message: "Changes saved." };
+  }
+
   return (
     <div className="flex justify-end gap-1">
-      <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          if (pending) return;
+          if (o) {
+            setFullName(name);
+            setRoleIds(currentRoleIds);
+          }
+          setOpen(o);
+        }}
+      >
         <DialogTrigger asChild>
           <Button size="sm" variant="outline">
-            <Settings2 /> Roles
+            <Settings2 /> Edit
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Roles for {name}</DialogTitle>
-            <DialogDescription>Changes take effect on the user&apos;s next page load and are recorded in the audit log.</DialogDescription>
+            <DialogTitle>Edit {name}</DialogTitle>
+            <DialogDescription>
+              {email}. Changes take effect on the user&apos;s next page load and are recorded in the audit log.
+            </DialogDescription>
           </DialogHeader>
-          <RoleChecklist roles={roles} value={roleIds} onChange={setRoleIds} />
+          <div className="grid gap-4">
+            <FormField id={`name_${userId}`} label="Full name" required>
+              <Input id={`name_${userId}`} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </FormField>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Roles</span>
+              <RoleChecklist roles={roles} value={roleIds} onChange={setRoleIds} />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
               Cancel
             </Button>
-            <Button disabled={pending} onClick={() => run(() => setUserRolesAction(userId, roleIds), () => setOpen(false))}>
-              {pending ? "Saving…" : "Save roles"}
+            <Button disabled={pending} onClick={() => run(save, () => setOpen(false))}>
+              {pending ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => resendInviteAction(email))} aria-label={`Send password link to ${email}`} title="Send password link">
-        <Send />
-      </Button>
+      {!isSelf && <SetPasswordDialog userId={userId} name={name} />}
       {!isSelf && (
         <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setUserActiveAction(userId, !active))} className={active ? "text-destructive" : ""}>
           {active ? <ShieldOff /> : <ShieldCheck />} {active ? "Deactivate" : "Reactivate"}
         </Button>
       )}
     </div>
+  );
+}
+
+function SetPasswordDialog({ userId, name }: { userId: string; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const { run, pending } = useRun();
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (pending) return;
+        setPassword("");
+        setOpen(o);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost">
+          <KeyRound /> Set password
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Set a temporary password for {name}</DialogTitle>
+          <DialogDescription>
+            Give it to them in person. They should change it from the account menu after signing in.
+          </DialogDescription>
+        </DialogHeader>
+        <FormField id={`pw_${userId}`} label="Temporary password" required hint="At least 10 characters, with letters and numbers.">
+          <Input id={`pw_${userId}`} type="text" autoComplete="off" spellCheck={false} value={password} onChange={(e) => setPassword(e.target.value)} />
+        </FormField>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+            Cancel
+          </Button>
+          <Button disabled={pending} onClick={() => run(() => setUserPasswordAction(userId, password), () => setOpen(false))}>
+            {pending ? "Saving…" : "Set password"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Explains how to create an account in Supabase; LIGHT does not send emails. */
+export function AddUserGuide() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>
+          <UserPlus /> Add a user
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add a user</DialogTitle>
+          <DialogDescription>Accounts are created in Supabase, then given a name and roles here.</DialogDescription>
+        </DialogHeader>
+        <ol className="list-decimal space-y-3 pl-5 text-sm">
+          <li>
+            Open the Supabase dashboard and go to <strong>Authentication → Users</strong>.
+          </li>
+          <li>
+            Click <strong>Add user → Create new user</strong>. Enter their email and a temporary password (at least 10
+            characters, with letters and numbers), keep <strong>Auto Confirm User</strong> ticked, then click{" "}
+            <strong>Create user</strong>.
+          </li>
+          <li>
+            Come back to this page and refresh. The new account appears with no roles; click <strong>Edit</strong> to
+            enter their full name and choose their roles. Until they have a role, they cannot see any records.
+          </li>
+          <li>
+            Give them their email and temporary password in person. After signing in, they should choose their own
+            password from the account menu: <strong>Change password</strong>.
+          </li>
+        </ol>
+        <p className="text-sm text-muted-foreground">
+          If someone forgets their password, click <strong>Set password</strong> next to their name and give them a new
+          temporary one.
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 }
 

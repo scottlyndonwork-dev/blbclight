@@ -3,7 +3,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { publicEnv } from "@/lib/env";
 import { createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
@@ -86,17 +85,6 @@ export async function signOutAction() {
   redirect("/login");
 }
 
-export async function requestPasswordResetAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const parsed = z.email().safeParse(formData.get("email"));
-  if (!parsed.success) return { error: "Enter a valid email address." };
-  const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${publicEnv().NEXT_PUBLIC_SITE_URL}/auth/confirm?next=/reset-password`,
-  });
-  // Same response whether or not the account exists, to avoid account enumeration.
-  return { message: "If an account exists for that email, a password reset link has been sent." };
-}
-
 const passwordSchema = z
   .object({
     password: z
@@ -114,7 +102,7 @@ export async function updatePasswordAction(_prev: AuthFormState, formData: FormD
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { error: "Your reset link has expired. Request a new one." };
+  if (!auth.user) return { error: "Your session has expired. Sign in again, then change your password." };
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { error: error.message.includes("different") ? "Choose a password different from your current one." : "Could not update the password. Please try again." };
   await supabase.rpc("log_event", { p_action: "auth.password_changed", p_entity_type: "user", p_entity_id: auth.user.id });
